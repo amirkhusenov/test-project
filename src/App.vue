@@ -1,11 +1,38 @@
 <script setup lang="ts">
 import { useAccountStore } from './stores/counter'
+import { ref, watch } from 'vue'
 
 const accountStore = useAccountStore()
 
 const recordTypes = ['Локальная', 'LDAP']
 
-// Обработчики событий
+const labelInputs = ref<Record<number, string>>({})
+
+watch(
+  () => accountStore.accounts.map(acc => acc.id),
+  (ids: number[]) => {
+    ids.forEach((id: number) => {
+      const acc: any = accountStore.accounts.find((a: any) => a.id === id)
+      if (acc && !(id in labelInputs.value)) {
+        labelInputs.value[id] = Array.isArray(acc.labels)
+          ? acc.labels.map((l: any) => l.text).join('; ')
+          : acc.labels
+      }
+    })
+  },
+  { immediate: true }
+)
+
+const handleLabelsBlur = (id: number) => {
+  const value = labelInputs.value[id] || ''
+  const arr = value
+    .split(';')
+    .map((label: string) => label.trim())
+    .filter((label: string) => label.length > 0)
+    .map((label: string) => ({ text: label }))
+  accountStore.updateAccount(id, { labels: arr })
+}
+
 const handleAddAccount = () => {
   accountStore.addAccount()
 }
@@ -15,7 +42,11 @@ const handleRemoveAccount = (id: number) => {
 }
 
 const handleUpdateAccount = (id: number, field: string, value: any) => {
-  accountStore.updateAccount(id, { [field]: value })
+  if (field === 'labels') {
+    labelInputs.value[id] = value
+  } else {
+    accountStore.updateAccount(id, { [field]: value })
+  }
 }
 
 const handleTogglePassword = (id: number) => {
@@ -71,30 +102,26 @@ const handleBlur = (id: number) => {
                     <span class="text-subtitle-2 font-weight-medium">Логин</span>
                   </th>
                   <th class="text-left pa-4" style="width: 30%">
-                    <span class="text-subtitle-2 font-weight-medium">Пароль</span>
+                    <span class="text-subtitle-2 font-weight-medium">Пароль / Действия</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="account in accountStore.accounts" :key="account.id">
-                  <!-- Метки -->
                   <td class="pa-4">
                     <v-text-field
-                      :model-value="account.labels"
+                      :model-value="labelInputs[account.id]"
                       @update:model-value="(value) => handleUpdateAccount(account.id, 'labels', value)"
-                      @blur="handleBlur(account.id)"
+                      @blur="() => handleLabelsBlur(account.id)"
                       variant="outlined"
                       density="compact"
                       hide-details
                       class="mt-0"
-                      :error="!!account.errors.labels"
-                      :error-messages="account.errors.labels"
-                      placeholder="Введите метки через ;"
-                      maxlength="50"
+                      :error="!!account.errors?.labels"
+                      :error-messages="account.errors?.labels"
+                      placeholder="Значение"
                     />
                   </td>
-                  
-                  <!-- Тип записи -->
                   <td class="pa-4">
                     <v-select
                       :model-value="account.recordType"
@@ -107,28 +134,46 @@ const handleBlur = (id: number) => {
                       class="mt-0"
                     />
                   </td>
-                  
-                  <!-- Логин -->
-                  <td class="pa-4">
-                    <v-text-field
-                      :model-value="account.login"
-                      @update:model-value="(value) => handleUpdateAccount(account.id, 'login', value)"
-                      @blur="handleBlur(account.id)"
-                      variant="outlined"
-                      density="compact"
-                      hide-details
-                      class="mt-0"
-                      :error="!!account.errors.login"
-                      :error-messages="account.errors.login"
-                      placeholder="Введите логин"
-                      maxlength="100"
-                      required
-                    />
+                  <td
+                    class="pa-4"
+                    :colspan="account.recordType === 'LDAP' ? 2 : 1"
+                    :style="{ width: account.recordType === 'LDAP' ? '55%' : '25%' }"
+                  >
+                    <div class="d-flex align-center">
+                      <v-text-field
+                        :model-value="account.login"
+                        @update:model-value="(value) => handleUpdateAccount(account.id, 'login', value)"
+                        @blur="handleBlur(account.id)"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        class="mt-0 flex-grow-1"
+                        :error="!!account.errors.login"
+                        :error-messages="account.errors.login"
+                        placeholder="Логин"
+                        maxlength="100"
+                        required
+                      />
+                      <v-btn
+                        v-if="account.recordType === 'LDAP'"
+                        icon
+                        variant="text"
+                        size="small"
+                        color="error"
+                        class="ml-2"
+                        @click="handleRemoveAccount(account.id)"
+                      >
+                        <v-icon>mdi-delete</v-icon>
+                      </v-btn>
+                      <div v-if="account.recordType === 'LDAP'" style="width: 50px;"></div>
+                    </div>
                   </td>
-                  
-                  <!-- Пароль -->
-                  <td class="pa-4">
-                    <div v-if="account.recordType === 'Локальная'" class="d-flex align-center">
+                  <td
+                    v-if="account.recordType === 'Локальная'"
+                    class="pa-4"
+                    :style="{ width: '30%' }"
+                  >
+                    <div class="d-flex align-center">
                       <v-text-field
                         :model-value="account.password"
                         @update:model-value="(value) => handleUpdateAccount(account.id, 'password', value)"
@@ -138,10 +183,9 @@ const handleBlur = (id: number) => {
                         density="compact"
                         hide-details
                         class="mt-0 flex-grow-1"
-                        style="max-width: 200px"
                         :error="!!account.errors.password"
                         :error-messages="account.errors.password"
-                        placeholder="Введите пароль"
+                        placeholder="Пароль"
                         maxlength="100"
                         required
                       />
@@ -153,7 +197,7 @@ const handleBlur = (id: number) => {
                         @click="handleTogglePassword(account.id)"
                       >
                         <v-icon>
-                          {{ account.showPassword ? 'mdi-eye-off' : 'mdi-eye' }}
+                          {{ account.showPassword ? 'mdi-eye' : 'mdi-eye-off' }}
                         </v-icon>
                       </v-btn>
                       <v-btn
@@ -161,29 +205,7 @@ const handleBlur = (id: number) => {
                         variant="text"
                         size="small"
                         color="error"
-                        class="ml-1"
-                        @click="handleRemoveAccount(account.id)"
-                      >
-                        <v-icon>mdi-delete</v-icon>
-                      </v-btn>
-                    </div>
-                    <div v-else class="d-flex align-center">
-                      <v-text-field
-                        value=""
-                        disabled
-                        variant="outlined"
-                        density="compact"
-                        hide-details
-                        class="mt-0 flex-grow-1"
-                        style="max-width: 200px"
-                        placeholder="Пароль скрыт для LDAP"
-                      />
-                      <v-btn
-                        icon
-                        variant="text"
-                        size="small"
-                        color="error"
-                        class="ml-1"
+                        class="ml-2"
                         @click="handleRemoveAccount(account.id)"
                       >
                         <v-icon>mdi-delete</v-icon>
