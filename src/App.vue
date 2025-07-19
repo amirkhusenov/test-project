@@ -1,47 +1,154 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import { ref } from 'vue'
+
+const accounts = ref([
+  {
+    id: 1,
+    labels: 'XXX',
+    recordType: 'Локальная',
+    login: 'Значение',
+    showPassword: false
+  },
+])
+
+const recordTypes = ['Локальная', 'LDAP']
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
+  <v-app>
+    <v-main>
+      <v-container fluid class="pa-6">
+        <div class="d-flex align-center justify-space-between mb-6">
+          <h1 class="text-h4 font-weight-bold">Учетные записи</h1>
+          <v-btn
+            color="primary"
+            prepend-icon="mdi-plus"
+            variant="elevated"
+            size="large"
+          >
+            Добавить
+          </v-btn>
+        </div>
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
+        <v-alert
+          type="info"
+          variant="tonal"
+          class="mb-6"
+          prepend-icon="mdi-information"
+        >
+          Для указания нескольких меток для одной пары логин/пароль используйте разделитель ;
+        </v-alert>
 
-  <main>
-    <TheWelcome />
-  </main>
+        <v-card>
+          <v-card-text class="pa-0">
+            <v-table>
+              <thead>
+                <tr>
+                  <th class="text-left pa-4" style="width: 25%">
+                    <span class="text-subtitle-2 font-weight-medium">Метки</span>
+                  </th>
+                  <th class="text-left pa-4" style="width: 20%">
+                    <span class="text-subtitle-2 font-weight-medium">Тип записи</span>
+                  </th>
+                  <th class="text-left pa-4" style="width: 25%">
+                    <span class="text-subtitle-2 font-weight-medium">Логин</span>
+                  </th>
+                  <th class="text-left pa-4" style="width: 30%">
+                    <span class="text-subtitle-2 font-weight-medium">Пароль</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="account in accounts" :key="account.id">
+                  <td class="pa-4">
+                    <v-text-field
+                      :placeholder="account.labels"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="mt-0"
+                    />
+                  </td>
+                  
+                  <td class="pa-4">
+                    <v-select
+                      v-model="account.recordType"
+                      :items="recordTypes"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="mt-0"
+                    />
+                  </td>
+                  
+                  <td class="pa-4">
+                    <v-text-field
+                      :placeholder="account.login"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="mt-0"
+                    />
+                  </td>
+                  
+                  <td class="pa-4">
+                    <div class="d-flex align-center">
+                      <v-text-field
+                        :type="account.showPassword ? 'password' :  'text'"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        class="mt-0 flex-grow-1"
+                        style="max-width: 200px"
+                      />
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        class="ml-2"
+                        @click="account.showPassword = !account.showPassword"
+                      >
+                        <v-icon>
+                          {{ account.showPassword ? 'mdi-eye-off' : 'mdi-eye' }}
+                        </v-icon>
+                      </v-btn>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        color="error"
+                        class="ml-1"
+                      >
+                        <v-icon>mdi-delete</v-icon>
+                      </v-btn>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
+.v-table {
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.v-table th {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+.v-table td {
+  border-bottom: 1px solid #f0f0f0;
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.v-table tr:hover {
+  background-color: #fafafa;
 }
 </style>
