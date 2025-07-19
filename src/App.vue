@@ -1,17 +1,33 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useAccountStore } from './stores/counter'
 
-const accounts = ref([
-  {
-    id: 1,
-    labels: 'XXX',
-    recordType: 'Локальная',
-    login: 'Значение',
-    showPassword: false
-  },
-])
+const accountStore = useAccountStore()
 
 const recordTypes = ['Локальная', 'LDAP']
+
+// Обработчики событий
+const handleAddAccount = () => {
+  accountStore.addAccount()
+}
+
+const handleRemoveAccount = (id: number) => {
+  accountStore.removeAccount(id)
+}
+
+const handleUpdateAccount = (id: number, field: string, value: any) => {
+  accountStore.updateAccount(id, { [field]: value })
+}
+
+const handleTogglePassword = (id: number) => {
+  accountStore.togglePasswordVisibility(id)
+}
+
+const handleBlur = (id: number) => {
+  const account = accountStore.accounts.find(acc => acc.id === id)
+  if (account) {
+    accountStore.validateAccount(account)
+  }
+}
 </script>
 
 <template>
@@ -25,6 +41,7 @@ const recordTypes = ['Локальная', 'LDAP']
             prepend-icon="mdi-plus"
             variant="elevated"
             size="large"
+            @click="handleAddAccount"
           >
             Добавить
           </v-btn>
@@ -59,20 +76,30 @@ const recordTypes = ['Локальная', 'LDAP']
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="account in accounts" :key="account.id">
+                <tr v-for="account in accountStore.accounts" :key="account.id">
+                  <!-- Метки -->
                   <td class="pa-4">
                     <v-text-field
-                      :placeholder="account.labels"
+                      :model-value="account.labels"
+                      @update:model-value="(value) => handleUpdateAccount(account.id, 'labels', value)"
+                      @blur="handleBlur(account.id)"
                       variant="outlined"
                       density="compact"
                       hide-details
                       class="mt-0"
+                      :error="!!account.errors.labels"
+                      :error-messages="account.errors.labels"
+                      placeholder="Введите метки через ;"
+                      maxlength="50"
                     />
                   </td>
                   
+                  <!-- Тип записи -->
                   <td class="pa-4">
                     <v-select
-                      v-model="account.recordType"
+                      :model-value="account.recordType"
+                      @update:model-value="(value) => handleUpdateAccount(account.id, 'recordType', value)"
+                      @blur="handleBlur(account.id)"
                       :items="recordTypes"
                       variant="outlined"
                       density="compact"
@@ -81,32 +108,49 @@ const recordTypes = ['Локальная', 'LDAP']
                     />
                   </td>
                   
+                  <!-- Логин -->
                   <td class="pa-4">
                     <v-text-field
-                      :placeholder="account.login"
+                      :model-value="account.login"
+                      @update:model-value="(value) => handleUpdateAccount(account.id, 'login', value)"
+                      @blur="handleBlur(account.id)"
                       variant="outlined"
                       density="compact"
                       hide-details
                       class="mt-0"
+                      :error="!!account.errors.login"
+                      :error-messages="account.errors.login"
+                      placeholder="Введите логин"
+                      maxlength="100"
+                      required
                     />
                   </td>
                   
+                  <!-- Пароль -->
                   <td class="pa-4">
-                    <div class="d-flex align-center">
+                    <div v-if="account.recordType === 'Локальная'" class="d-flex align-center">
                       <v-text-field
-                        :type="account.showPassword ? 'password' :  'text'"
+                        :model-value="account.password"
+                        @update:model-value="(value) => handleUpdateAccount(account.id, 'password', value)"
+                        @blur="handleBlur(account.id)"
+                        :type="account.showPassword ? 'text' : 'password'"
                         variant="outlined"
                         density="compact"
                         hide-details
                         class="mt-0 flex-grow-1"
                         style="max-width: 200px"
+                        :error="!!account.errors.password"
+                        :error-messages="account.errors.password"
+                        placeholder="Введите пароль"
+                        maxlength="100"
+                        required
                       />
                       <v-btn
                         icon
                         variant="text"
                         size="small"
                         class="ml-2"
-                        @click="account.showPassword = !account.showPassword"
+                        @click="handleTogglePassword(account.id)"
                       >
                         <v-icon>
                           {{ account.showPassword ? 'mdi-eye-off' : 'mdi-eye' }}
@@ -118,6 +162,29 @@ const recordTypes = ['Локальная', 'LDAP']
                         size="small"
                         color="error"
                         class="ml-1"
+                        @click="handleRemoveAccount(account.id)"
+                      >
+                        <v-icon>mdi-delete</v-icon>
+                      </v-btn>
+                    </div>
+                    <div v-else class="d-flex align-center">
+                      <v-text-field
+                        value=""
+                        disabled
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        class="mt-0 flex-grow-1"
+                        style="max-width: 200px"
+                        placeholder="Пароль скрыт для LDAP"
+                      />
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        color="error"
+                        class="ml-1"
+                        @click="handleRemoveAccount(account.id)"
                       >
                         <v-icon>mdi-delete</v-icon>
                       </v-btn>
@@ -128,6 +195,7 @@ const recordTypes = ['Локальная', 'LDAP']
             </v-table>
           </v-card-text>
         </v-card>
+
       </v-container>
     </v-main>
   </v-app>
